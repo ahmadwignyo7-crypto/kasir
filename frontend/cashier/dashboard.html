@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KAGO - Dashboard Kasir</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .stat-card .stat-number {
+            font-size: 2em;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .stat-card .stat-label {
+            font-size: 0.85em;
+            color: #6c757d;
+            font-weight: 500;
+        }
+        .stat-card.total .stat-number { color: #0f3460; }
+        .stat-card.pending .stat-number { color: #e67e22; }
+        .stat-card.processing .stat-number { color: #3498db; }
+        .stat-card.completed .stat-number { color: #27ae60; }
+        .stat-card.paid .stat-number { color: #8e44ad; }
+
+        .status-label {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-pending { background: #fff3e0; color: #e65100; }
+        .status-processing { background: #e3f2fd; color: #1565c0; }
+        .status-completed { background: #e8f5e9; color: #2e7d32; }
+        .status-paid { background: #f3e5f5; color: #7b1fa2; }
+
+        .order-type-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .order-type-badge.qr { background: #e7f1ff; color: #0f3460; }
+        .order-type-badge.kasir { background: #d4edda; color: #155724; }
+        .order-type-badge.dine_in { background: #d4edda; color: #155724; }
+        .order-type-badge.takeaway { background: #fff3e0; color: #e65100; }
+
+        .order-card { margin-bottom: 12px; }
+        .order-header { display: flex; justify-content: space-between; align-items: center; }
+        .order-header h3 { margin: 0; font-size: 1.1em; }
+        .order-meta { display: flex; gap: 8px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+        .order-actions { margin-top: 10px; }
+
+        .btn-pay {
+            background: #27ae60;
+            color: white;
+            padding: 6px 14px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        .btn-receipt {
+            background: #8e44ad;
+            color: white;
+            padding: 6px 14px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>💰 Dashboard Kasir</h1>
+            <button class="btn-logout" onclick="logout()">Keluar</button>
+        </header>
+
+        <div class="quick-actions">
+            <a href="new-order.html" class="btn-action">📝 Pesanan Baru</a>
+            <a href="orders.html" class="btn-action">📋 Daftar Pesanan</a>
+            <a href="payment.html" class="btn-action">💳 Proses Pembayaran</a>
+        </div>
+
+        <div class="stats-grid" id="stats-grid">
+            <div class="stat-card total">
+                <div class="stat-number" id="stat-total">-</div>
+                <div class="stat-label">Total Pesanan</div>
+            </div>
+            <div class="stat-card pending">
+                <div class="stat-number" id="stat-pending">-</div>
+                <div class="stat-label">⏳ Menunggu</div>
+            </div>
+            <div class="stat-card processing">
+                <div class="stat-number" id="stat-processing">-</div>
+                <div class="stat-label">🔥 Diproses</div>
+            </div>
+            <div class="stat-card completed">
+                <div class="stat-number" id="stat-completed">-</div>
+                <div class="stat-label">✅ Selesai</div>
+            </div>
+            <div class="stat-card paid">
+                <div class="stat-number" id="stat-paid">-</div>
+                <div class="stat-label">💎 Dibayar</div>
+            </div>
+        </div>
+
+        <h2>📋 Pesanan Terbaru</h2>
+        <div id="loading">⏳ Memuat pesanan...</div>
+        <div id="recent-orders"></div>
+    </div>
+    <script src="../js/api.js"></script>
+    <script>
+        if (!isLoggedIn() || getUserRole() !== 'kasir') {
+            window.location.href = '/login.html';
+        }
+
+        const recentOrders = document.getElementById('recent-orders');
+        const loading = document.getElementById('loading');
+
+        const statusMap = {
+            'pending': 'Menunggu',
+            'processing': 'Diproses',
+            'completed': 'Selesai',
+            'paid': 'Dibayar'
+        };
+
+        const orderTypeMap = {
+            'qr': 'QR',
+            'kasir': 'Kasir',
+            'dine_in': 'Dine In',
+            'takeaway': 'Take Away'
+        };
+
+        function updateStats(orders) {
+            document.getElementById('stat-total').textContent = orders.length;
+            document.getElementById('stat-pending').textContent = orders.filter(o => o.status === 'pending').length;
+            document.getElementById('stat-processing').textContent = orders.filter(o => o.status === 'processing').length;
+            document.getElementById('stat-completed').textContent = orders.filter(o => o.status === 'completed').length;
+            document.getElementById('stat-paid').textContent = orders.filter(o => o.status === 'paid').length;
+        }
+
+        Promise.all([getOrders(), getTables()])
+            .then(([orders, tables]) => {
+                loading.style.display = 'none';
+                updateStats(orders);
+
+                if (orders.length === 0) {
+                    recentOrders.innerHTML = '<p>📋 Belum ada pesanan</p>';
+                    return;
+                }
+
+                recentOrders.innerHTML = orders.slice(0, 15).map(order => `
+                    <div class="order-card ${order.status}">
+                        <div class="order-header">
+                            <h3>#${order.order_number}</h3>
+                            <span class="status-label status-${order.status}">${statusMap[order.status] || order.status}</span>
+                        </div>
+                        <div class="order-meta">
+                            <span>💰 Rp ${order.total.toLocaleString()}</span>
+                            <span>🪑 ${order.table_id ? 'Meja ' + order.table_id : '-'}</span>
+                            ${order.order_type ? `<span class="order-type-badge ${order.order_type}">${orderTypeMap[order.order_type] || order.order_type}</span>` : ''}
+                        </div>
+                        <div class="order-actions">
+                            ${order.status === 'completed' ?
+                                `<a href="payment.html?order_id=${order.id}" class="btn-pay">💳 Bayar</a>` : ''}
+                            ${order.status === 'paid' ?
+                                `<a href="receipt.html?order_id=${order.id}" class="btn-receipt">🧾 Struk</a>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            })
+            .catch(err => {
+                loading.textContent = '❌ Gagal memuat pesanan';
+            });
+    </script>
+</body>
+</html>

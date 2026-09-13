@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KAGO - Menu</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .order-type-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .order-type-badge.kasir { background: #d4edda; color: #155724; }
+        .order-type-badge.qr { background: #e7f1ff; color: #0f3460; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div style="display:flex; align-items:center; gap:12px;">
+                <h1>Menu KAGO</h1>
+                <span id="table-badge" class="table-badge" style="display:none;"></span>
+                <span id="order-type-badge" class="order-type-badge" style="display:none;"></span>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <a href="/" class="btn-back">Beranda</a>
+                <a id="cart-link" href="cart.html" class="btn-cart">Keranjang (<span id="cart-badge">0</span>)</a>
+            </div>
+        </header>
+        <div id="loading">Memuat menu...</div>
+        <div id="error-message" style="display:none;"></div>
+        <div id="menu-list" class="menu-grid"></div>
+    </div>
+    <script src="../js/api.js"></script>
+    <script src="../js/cart.js"></script>
+    <script>
+        var menuList = document.getElementById('menu-list');
+        var loading = document.getElementById('loading');
+        var errorMsg = document.getElementById('error-message');
+        var tableBadge = document.getElementById('table-badge');
+        var orderTypeBadge = document.getElementById('order-type-badge');
+        var cartLink = document.getElementById('cart-link');
+
+        var urlParams = new URLSearchParams(window.location.search);
+        var meja = urlParams.get('meja');
+        var orderType = urlParams.get('order_type');
+        var allMenus = [];
+        var allCategories = [];
+
+        if (meja) {
+            tableBadge.textContent = 'Meja ' + meja;
+            tableBadge.style.display = 'inline-block';
+            document.title = 'KAGO - Meja ' + meja;
+        }
+
+        if (orderType) {
+            var label = orderType === 'dine_in' ? 'Dine In' : 'Take Away';
+            var cssClass = orderType === 'dine_in' ? 'kasir' : 'qr';
+            orderTypeBadge.textContent = label;
+            orderTypeBadge.className = 'order-type-badge ' + cssClass;
+            orderTypeBadge.style.display = 'inline-block';
+        }
+
+        cartLink.href = 'cart.html' + getMejaParam();
+
+        var categoryIcons = {
+            'Makanan': '🍜',
+            'Minuman': '🥤',
+            'Snack': '🍿',
+            'Paket': '🎁'
+        };
+
+        function getMenuIcon(categoryName) {
+            return categoryIcons[categoryName] || '🍽️';
+        }
+
+        function renderMenus() {
+            loading.style.display = 'none';
+            if (allMenus.length === 0) {
+                menuList.innerHTML = '<p style="grid-column:1/-1; text-align:center; color:#6c757d; padding:40px;">Menu belum tersedia</p>';
+                return;
+            }
+
+            menuList.innerHTML = allMenus.map(function(menu) {
+                var catClass = 'makanan';
+                if (menu.category_name === 'Minuman') catClass = 'minuman';
+                else if (menu.category_name === 'Snack') catClass = 'snack';
+                else if (menu.category_name === 'Paket') catClass = 'paket';
+
+                return '<div class="menu-card">' +
+                    '<div class="menu-placeholder ' + catClass + '">' + getMenuIcon(menu.category_name) + '</div>' +
+                    '<h3>' + menu.name + '</h3>' +
+                    '<p class="price">Rp ' + menu.price.toLocaleString() + '</p>' +
+                    '<button onclick="addToCart(\'' + menu.id + '\', \'' + menu.name.replace(/'/g, "\\'") + '\', ' + menu.price + ')">+ Keranjang</button>' +
+                '</div>';
+            }).join('');
+        }
+
+        Promise.all([getMenus(), getCategories()])
+            .then(function(result) {
+                allMenus = result[0];
+                var categories = result[1];
+
+                var catMap = {};
+                categories.forEach(function(c) { catMap[c.id] = c.name; });
+                allMenus.forEach(function(m) { m.category_name = catMap[m.category_id] || ''; });
+
+                renderMenus();
+            })
+            .catch(function(err) {
+                loading.style.display = 'none';
+                errorMsg.style.display = 'block';
+                errorMsg.textContent = 'Gagal memuat menu: ' + err.message;
+            });
+
+        updateCartBadge();
+    </script>
+</body>
+</html>

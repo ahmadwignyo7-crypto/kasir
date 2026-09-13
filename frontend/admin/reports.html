@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KAGO - Laporan</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Laporan Penjualan</h1>
+            <div style="display:flex; gap:8px;">
+                <a href="dashboard.html" class="btn-back">← Kembali</a>
+                <button class="btn-logout" onclick="logout()">Keluar</button>
+            </div>
+        </header>
+        <div id="loading">⏳ Memuat laporan...</div>
+        <div id="reports">
+            <h2>📋 Ringkasan</h2>
+            <div id="summary-stats" class="stats-grid"></div>
+
+            <h2>📊 Pesanan Berdasarkan Status</h2>
+            <div id="order-stats"></div>
+
+            <h2>✅ Daftar Pesanan Terbayar</h2>
+            <div id="paid-orders"></div>
+        </div>
+    </div>
+    <script src="../js/api.js"></script>
+    <script>
+        if (!isLoggedIn() || getUserRole() !== 'admin') {
+            window.location.href = '/login.html';
+        }
+
+        const loading = document.getElementById('loading');
+        const summaryStats = document.getElementById('summary-stats');
+        const orderStats = document.getElementById('order-stats');
+        const paidOrders = document.getElementById('paid-orders');
+
+        async function loadReports() {
+            try {
+                const orders = await getOrders();
+                loading.style.display = 'none';
+
+                const totalOrders = orders.length;
+                const paidOrdersList = orders.filter(o => o.status === 'paid');
+                const totalRevenue = paidOrdersList.reduce((sum, o) => sum + (o.total || 0), 0);
+                const pendingOrders = orders.filter(o => o.status === 'pending').length;
+                const processingOrders = orders.filter(o => o.status === 'processing').length;
+                const completedOrders = orders.filter(o => o.status === 'completed').length;
+
+                summaryStats.innerHTML = `
+                    <div class="stat-card">
+                        <div class="stat-icon">📋</div>
+                        <h3>${totalOrders}</h3>
+                        <p>Total Pesanan</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">✅</div>
+                        <h3>${paidOrdersList.length}</h3>
+                        <p>Sudah Bayar</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💰</div>
+                        <h3>Rp ${totalRevenue.toLocaleString()}</h3>
+                        <p>Total Pendapatan</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⏳</div>
+                        <h3>${pendingOrders}</h3>
+                        <p>Menunggu</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🔥</div>
+                        <h3>${processingOrders}</h3>
+                        <p>Diproses</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🍽️</div>
+                        <h3>${completedOrders}</h3>
+                        <p>Siap Diambil</p>
+                    </div>
+                `;
+
+                const statusCounts = {};
+                orders.forEach(order => {
+                    const s = order.status || 'unknown';
+                    statusCounts[s] = (statusCounts[s] || 0) + 1;
+                });
+
+                const statusLabels = {
+                    'pending': '⏳ Menunggu',
+                    'processing': '🔥 Diproses',
+                    'completed': '🍽️ Siap Diambil',
+                    'paid': '✅ Selesai',
+                    'unknown': '❓ Tidak Diketahui'
+                };
+
+                orderStats.innerHTML = Object.entries(statusCounts).map(([status, count]) => `
+                    <div class="order-card ${status}" style="margin-bottom: 8px;">
+                        <p><strong>${statusLabels[status] || status}</strong>: ${count} pesanan</p>
+                    </div>
+                `).join('');
+
+                if (paidOrdersList.length === 0) {
+                    paidOrders.innerHTML = '<p>📋 Belum ada pesanan terbayar</p>';
+                } else {
+                    paidOrders.innerHTML = paidOrdersList.map(order => `
+                        <div class="order-card paid" style="margin-bottom: 8px;">
+                            <div class="order-header">
+                                <h3>🧾 #${order.order_number}</h3>
+                                <span class="status-paid">✅ Selesai</span>
+                            </div>
+                            <p>💰 Total: Rp ${(order.total || 0).toLocaleString()}</p>
+                            <p>🪑 Meja: ${order.table_id || '-'}</p>
+                            <p>📝 Tipe: ${order.order_type || '-'}</p>
+                        </div>
+                    `).join('');
+                }
+            } catch (err) {
+                loading.textContent = '❌ Gagal memuat laporan: ' + err.message;
+            }
+        }
+
+        loadReports();
+    </script>
+</body>
+</html>

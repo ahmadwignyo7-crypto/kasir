@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KAGO - Sistem Kasir & Pemesanan</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .hero {
+            text-align: center;
+            padding: 50px 20px 30px;
+            background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
+            border-radius: 20px;
+            color: white;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 30px rgba(15,52,96,0.3);
+        }
+        .hero .logo-icon { font-size: 4em; margin-bottom: 15px; }
+        .hero h1 { font-size: 2.8em; color: white; margin-bottom: 8px; letter-spacing: 2px; }
+        .hero p { color: rgba(255,255,255,0.8); font-size: 1.15em; }
+
+        .section-title {
+            text-align: center;
+            font-size: 1.4em;
+            color: #16213e;
+            margin: 30px 0 20px;
+            font-weight: 700;
+        }
+
+        .order-options {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .order-option {
+            background: white;
+            border-radius: 16px;
+            padding: 35px 20px;
+            text-align: center;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        .order-option:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+            border-color: #0f3460;
+        }
+
+        .order-option .option-icon {
+            font-size: 3.5em;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .order-option h3 {
+            font-size: 1.3em;
+            color: #1a1a2e;
+            margin-bottom: 8px;
+        }
+
+        .order-option p {
+            color: #6c757d;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+
+        .order-option .option-badge {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .option-qr .option-badge { background: #e7f1ff; color: #0f3460; }
+        .option-dinein .option-badge { background: #d4edda; color: #155724; }
+        .option-takeaway .option-badge { background: #fff3e0; color: #e65100; }
+
+        .scan-section {
+            background: white;
+            border-radius: 16px;
+            padding: 40px 20px;
+            text-align: center;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            margin-bottom: 30px;
+        }
+
+        .scan-section h3 {
+            color: #16213e;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .scan-section p {
+            color: #6c757d;
+            margin-bottom: 20px;
+        }
+
+        .scan-input-group {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .scan-input-group input {
+            flex: 1;
+            padding: 14px 18px;
+            font-size: 16px;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .scan-input-group button {
+            padding: 14px 24px;
+            font-size: 16px;
+            border-radius: 10px;
+            background: #0f3460;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .scan-input-group button:hover {
+            background: #e94560;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin: 30px 0;
+            color: #adb5bd;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #dee2e6;
+        }
+
+        .footer-info {
+            text-align: center;
+            padding: 20px;
+            color: #adb5bd;
+            font-size: 0.9em;
+        }
+
+        .footer-info a {
+            color: #6f42c1;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .order-options { grid-template-columns: 1fr; gap: 15px; }
+            .hero h1 { font-size: 2em; }
+            .hero .logo-icon { font-size: 3em; }
+            .scan-input-group { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Hero Section -->
+        <div class="hero">
+            <div class="logo-icon">🍽️</div>
+            <h1>KAGO</h1>
+            <p>Sistem Kasir & Pemesanan Berbasis Web</p>
+        </div>
+
+        <!-- Pilih Cara Pesan -->
+        <div class="section-title">Pilih Cara Pesan</div>
+
+        <div class="order-options">
+            <!-- QR Scan -->
+            <a href="#scan-section" class="order-option option-qr" onclick="scrollToScan()">
+                <span class="option-icon">📱</span>
+                <h3>Scan QR</h3>
+                <p>Scan QR code di meja untuk langsung memesan</p>
+                <span class="option-badge">Paling Mudah</span>
+            </a>
+
+            <!-- Dine In -->
+            <a href="customer/menu.html?order_type=dine_in" class="order-option option-dinein">
+                <span class="option-icon">🪑</span>
+                <h3>Makan di Tempat</h3>
+                <p>Pilih meja lalu pesan menu favoritmu</p>
+                <span class="option-badge">Dine In</span>
+            </a>
+
+            <!-- Take Away -->
+            <a href="customer/menu.html?order_type=takeaway" class="order-option option-takeaway">
+                <span class="option-icon">🛍️</span>
+                <h3>Bawa Pulang</h3>
+                <p>Pesan dan ambil sendiri tanpa perlu meja</p>
+                <span class="option-badge">Take Away</span>
+            </a>
+        </div>
+
+        <!-- Scan QR Section -->
+        <div id="scan-section" class="scan-section">
+            <h3>Sudah punya nomor meja?</h3>
+            <p>Masukkan nomor meja (1-10) dari QR code untuk mulai memesan</p>
+            <div class="scan-input-group">
+                <input type="number" id="manual-table" placeholder="Nomor Meja" min="1" max="10">
+                <button onclick="goToMenu()">Pesan Sekarang</button>
+            </div>
+            <p id="table-error" style="color:#dc3545; display:none; margin-top:10px; font-size:14px;">Nomor meja harus antara 1 - 10</p>
+        </div>
+
+        <div class="divider">atau</div>
+
+        <!-- Login Section -->
+        <div class="scan-section">
+            <h3>Staff / Admin</h3>
+            <p>Masuk ke dashboard kasir, dapur, atau admin</p>
+            <a href="/login.html" class="btn-action" style="display:inline-flex;">🔐 Login</a>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer-info">
+            <p>📱 Scan QR code di meja atau pilih opsi di atas untuk mulai memesan</p>
+        </div>
+    </div>
+
+    <script>
+        var MAX_TABLE = 10;
+
+        function scrollToScan() {
+            document.getElementById('manual-table').focus();
+        }
+
+        function goToMenu() {
+            var tableNum = parseInt(document.getElementById('manual-table').value);
+            var errEl = document.getElementById('table-error');
+
+            if (!tableNum || tableNum < 1 || tableNum > MAX_TABLE) {
+                errEl.style.display = 'block';
+                return;
+            }
+            errEl.style.display = 'none';
+            window.location.href = 'customer/menu.html?meja=' + tableNum;
+        }
+
+        document.getElementById('manual-table').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') goToMenu();
+        });
+
+        document.getElementById('manual-table').addEventListener('input', function() {
+            document.getElementById('table-error').style.display = 'none';
+        });
+    </script>
+</body>
+</html>

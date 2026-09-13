@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KAGO - Kelola Menu</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🍽️ Kelola Menu</h1>
+            <div style="display:flex; gap:8px;">
+                <a href="dashboard.html" class="btn-back">← Kembali</a>
+                <button class="btn-logout" onclick="logout()">Keluar</button>
+            </div>
+        </header>
+
+        <div class="form-section">
+            <h2>➕ Tambah Menu Baru</h2>
+            <form id="add-menu-form">
+                <input type="text" name="name" placeholder="Nama Menu" required>
+                <input type="number" name="price" placeholder="Harga" required>
+                <input type="text" name="category_id" placeholder="ID Kategori" required>
+                <input type="text" name="image_url" placeholder="URL Gambar (opsional)">
+                <label>
+                    <input type="checkbox" name="is_available" checked> ✅ Tersedia
+                </label>
+                <button type="submit">➕ Tambah Menu</button>
+            </form>
+        </div>
+
+        <h2>📋 Daftar Menu</h2>
+        <div id="loading">⏳ Memuat menu...</div>
+        <div id="menu-list"></div>
+    </div>
+    <script src="../js/api.js"></script>
+    <script>
+        if (!isLoggedIn() || getUserRole() !== 'admin') {
+            window.location.href = '/login.html';
+        }
+
+        const menuList = document.getElementById('menu-list');
+        const loading = document.getElementById('loading');
+
+        async function loadMenus() {
+            try {
+                const menus = await getMenus();
+                loading.style.display = 'none';
+
+                if (menus.length === 0) {
+                    menuList.innerHTML = '<p>📋 Belum ada menu</p>';
+                    return;
+                }
+
+                menuList.innerHTML = menus.map(menu => `
+                    <div class="menu-card">
+                        <h3>${menu.name}</h3>
+                        <p class="price">💰 Rp ${menu.price.toLocaleString()}</p>
+                        <p>📁 Kategori: ${menu.category_id}</p>
+                        <p>📊 Status: ${menu.is_available !== false ? '✅ Tersedia' : '❌ Tidak Tersedia'}</p>
+                        <div class="menu-actions">
+                            <button onclick="editMenuItem('${menu.id}', '${menu.name.replace(/'/g, "\\'")}', ${menu.price}, '${menu.category_id || ''}')">✏️ Edit</button>
+                            <button onclick="deleteMenuItem('${menu.id}')">🗑️ Hapus</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                loading.textContent = '❌ Gagal memuat menu';
+            }
+        }
+
+        document.getElementById('add-menu-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            data.price = parseInt(data.price);
+            data.is_available = formData.has('is_available');
+
+            try {
+                await createMenu(data);
+                alert('✅ Menu berhasil ditambahkan!');
+                this.reset();
+                loadMenus();
+            } catch (err) {
+                alert('❌ Gagal menambah menu: ' + err.message);
+            }
+        });
+
+        async function editMenuItem(menuId, name, price, categoryId) {
+            const newName = prompt('Nama menu:', name);
+            if (newName === null) return;
+            const newPrice = prompt('Harga:', price);
+            if (newPrice === null) return;
+            const newCategory = prompt('Kategori:', categoryId);
+            if (newCategory === null) return;
+
+            try {
+                await updateMenu(menuId, {
+                    name: newName,
+                    price: parseInt(newPrice),
+                    category_id: newCategory
+                });
+                alert('✅ Menu berhasil diupdate!');
+                loadMenus();
+            } catch (err) {
+                alert('❌ Gagal update menu: ' + err.message);
+            }
+        }
+
+        async function deleteMenuItem(menuId) {
+            if (!confirm('🗑️ Yakin ingin menghapus menu ini?')) return;
+
+            try {
+                await deleteMenu(menuId);
+                alert('✅ Menu berhasil dihapus!');
+                loadMenus();
+            } catch (err) {
+                alert('❌ Gagal menghapus menu: ' + err.message);
+            }
+        }
+
+        loadMenus();
+    </script>
+</body>
+</html>

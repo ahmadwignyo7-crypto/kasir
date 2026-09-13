@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KAGO - Pesan di Meja</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="qr-landing" id="qr-landing">
+            <div style="font-size: 4em; margin-bottom: 10px;">🍽️</div>
+            <h1>KAGO</h1>
+            <div id="table-info">
+                <div class="welcome-text">Anda sedang memesan di:</div>
+                <div class="table-number" id="table-number">--</div>
+            </div>
+            <div id="no-table" class="no-table-warning" style="display:none;">
+                <p>⚠️ Tidak ada nomor meja terdeteksi.</p>
+                <p>📱 Silakan scan QR code di meja Anda.</p>
+            </div>
+            <div id="action-section" style="display:none;">
+                <a id="btn-start" href="#" class="btn-start">📋 Mulai Pesan</a>
+            </div>
+            <div style="margin-top: 30px;">
+                <a href="index.html" style="color: #999;">← Kembali ke Beranda</a>
+            </div>
+        </div>
+    </div>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const meja = urlParams.get('meja');
+        const tableNumberEl = document.getElementById('table-number');
+        const noTableEl = document.getElementById('no-table');
+        const tableInfoEl = document.getElementById('table-info');
+        const actionSection = document.getElementById('action-section');
+        const btnStart = document.getElementById('btn-start');
+
+        if (meja) {
+            tableNumberEl.textContent = '🪑 Meja ' + meja;
+            actionSection.style.display = 'block';
+            btnStart.href = 'menu.html?meja=' + encodeURIComponent(meja);
+            document.title = 'KAGO - Meja ' + meja;
+        } else {
+            tableInfoEl.style.display = 'none';
+            noTableEl.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

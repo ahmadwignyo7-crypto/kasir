@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KAGO - Keranjang</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div style="display:flex; align-items:center; gap:12px;">
+                <h1>🛒 Keranjang</h1>
+                <span id="table-badge" class="table-badge" style="display:none;"></span>
+            </div>
+            <a id="back-link" href="menu.html" class="btn-back">← Kembali ke Menu</a>
+        </header>
+        <div id="cart-items"></div>
+        <div id="cart-total"></div>
+    </div>
+    <script src="../js/api.js"></script>
+    <script src="../js/cart.js"></script>
+    <script>
+        const tableBadge = document.getElementById('table-badge');
+        const backLink = document.getElementById('back-link');
+
+        const meja = getTableFromURL();
+        if (meja) {
+            tableBadge.textContent = '🪑 Meja ' + meja;
+            tableBadge.style.display = 'inline-block';
+            document.title = 'KAGO - Keranjang Meja ' + meja;
+        }
+
+        backLink.href = 'menu.html' + getMejaParam();
+
+        displayCart();
+    </script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+Flask
+firebase-admin
+flask-bcrypt
+PyJWT
+python-dotenv
+flask-cors
+qrcode[pil]
+flask-jwt-extended

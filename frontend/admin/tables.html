@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KAGO - Kelola Meja</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🪑 Kelola Meja</h1>
+            <div style="display:flex; gap:8px;">
+                <a href="dashboard.html" class="btn-back">← Kembali</a>
+                <button class="btn-logout" onclick="logout()">Keluar</button>
+            </div>
+        </header>
+
+        <div class="form-section">
+            <h2>➕ Tambah Meja Baru</h2>
+            <form id="add-table-form">
+                <input type="number" name="table_number" placeholder="Nomor Meja" required>
+                <select name="status">
+                    <option value="available">✅ Tersedia</option>
+                    <option value="occupied">🔴 Terisi</option>
+                    <option value="reserved">🟡 Direservasi</option>
+                </select>
+                <button type="submit">➕ Tambah Meja</button>
+            </form>
+        </div>
+
+        <h2>📋 Daftar Meja</h2>
+        <div id="loading">⏳ Memuat meja...</div>
+        <div id="table-list"></div>
+    </div>
+    <script src="../js/api.js"></script>
+    <script>
+        if (!isLoggedIn() || getUserRole() !== 'admin') {
+            window.location.href = '/login.html';
+        }
+
+        const tableList = document.getElementById('table-list');
+        const loading = document.getElementById('loading');
+
+        async function loadTables() {
+            try {
+                const tables = await getTables();
+                loading.style.display = 'none';
+
+                if (tables.length === 0) {
+                    tableList.innerHTML = '<p>📋 Belum ada meja</p>';
+                    return;
+                }
+
+                tableList.innerHTML = tables.map(table => `
+                    <div class="table-card">
+                        <h3>🪑 Meja ${table.table_number}</h3>
+                        <p>📊 Status: ${table.status === 'available' ? '✅ Tersedia' : table.status === 'occupied' ? '🔴 Terisi' : '🟡 Direservasi'}</p>
+                        ${table.qr_code_url ? `<img src="${table.qr_code_url}" alt="QR Meja ${table.table_number}" width="150">` : '<p>📱 Belum ada QR Code</p>'}
+                        <div class="table-actions">
+                            <button onclick="generateQRItem('${table.id}', ${table.table_number})">📱 Generate QR</button>
+                            <button onclick="deleteTableItem('${table.id}')">🗑️ Hapus</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                loading.textContent = '❌ Gagal memuat meja';
+            }
+        }
+
+        document.getElementById('add-table-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+
+            try {
+                await createTable(data);
+                alert('✅ Meja berhasil ditambahkan!');
+                this.reset();
+                loadTables();
+            } catch (err) {
+                alert('❌ Gagal menambah meja: ' + err.message);
+            }
+        });
+
+        async function generateQRItem(tableId, tableNumber) {
+            try {
+                const result = await generateTableQR(tableId);
+                alert(`✅ QR code berhasil dibuat untuk Meja ${tableNumber}`);
+                loadTables();
+            } catch (err) {
+                alert('❌ Gagal generate QR: ' + err.message);
+            }
+        }
+
+        async function deleteTableItem(tableId) {
+            if (!confirm('🗑️ Yakin ingin menghapus meja ini?')) return;
+
+            try {
+                await deleteTable(tableId);
+                alert('✅ Meja berhasil dihapus!');
+                loadTables();
+            } catch (err) {
+                alert('❌ Gagal menghapus meja: ' + err.message);
+            }
+        }
+
+        loadTables();
+    </script>
+</body>
+</html>

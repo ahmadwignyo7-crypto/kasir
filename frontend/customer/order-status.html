@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KAGO - Status Pesanan</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .status-timeline {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+            padding: 0 10px;
+        }
+        .timeline-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            position: relative;
+        }
+        .timeline-step::after {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            width: 100%;
+            height: 3px;
+            background: #e9ecef;
+            z-index: 0;
+        }
+        .timeline-step:last-child::after {
+            display: none;
+        }
+        .timeline-step.active::after {
+            background: #28a745;
+        }
+        .timeline-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e9ecef;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            z-index: 1;
+            margin-bottom: 8px;
+        }
+        .timeline-step.active .timeline-icon {
+            background: #28a745;
+            color: white;
+        }
+        .timeline-step.current .timeline-icon {
+            background: #0f3460;
+            color: white;
+            animation: pulse 1.5s infinite;
+        }
+        .timeline-label {
+            font-size: 11px;
+            color: #6c757d;
+            text-align: center;
+        }
+        .timeline-step.active .timeline-label {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .timeline-step.current .timeline-label {
+            color: #0f3460;
+            font-weight: bold;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .live-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #d4edda;
+            color: #155724;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .live-badge .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #28a745;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div style="display:flex; align-items:center; gap:12px;">
+                <h1>📋 Status Pesanan</h1>
+                <span id="table-badge" class="table-badge" style="display:none;"></span>
+            </div>
+            <div id="live-indicator" class="live-badge" style="display:none;">
+                <span class="dot"></span>
+                <span>Live</span>
+            </div>
+        </header>
+        <div id="loading">⏳ Menyambungkan ke server realtime...</div>
+        <div id="order-status" style="display:none;"></div>
+        <div style="text-align: center; margin-top: 20px;">
+            <a id="back-link" href="index.html" class="btn-back">← Kembali ke Beranda</a>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/cart.js"></script>
+    <script src="../js/realtime.js"></script>
+    <script src="../js/order.js"></script>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderId = urlParams.get('order_id');
+        const loading = document.getElementById('loading');
+        const orderStatus = document.getElementById('order-status');
+        const tableBadge = document.getElementById('table-badge');
+        const backLink = document.getElementById('back-link');
+        const liveIndicator = document.getElementById('live-indicator');
+
+        const meja = getTableFromURL();
+        if (meja) {
+            tableBadge.textContent = '🪑 Meja ' + meja;
+            tableBadge.style.display = 'inline-block';
+            document.title = 'KAGO - Status Pesanan Meja ' + meja;
+            backLink.href = 'menu.html' + getMejaParam();
+        }
+
+        let previousStatus = null;
+
+        function renderOrderStatus(order) {
+            loading.style.display = 'none';
+            orderStatus.style.display = 'block';
+            liveIndicator.style.display = 'inline-flex';
+
+            const statusSteps = ['pending', 'processing', 'completed', 'paid'];
+            const statusIcons = {
+                'pending': '⏳',
+                'processing': '🔥',
+                'completed': '🍽️',
+                'paid': '✅'
+            };
+            const statusLabels = {
+                'pending': 'Menunggu',
+                'processing': 'Diproses',
+                'completed': 'Siap Diambil',
+                'paid': 'Selesai'
+            };
+
+            const currentStepIndex = statusSteps.indexOf(order.status);
+
+            // Play sound on status change
+            if (previousStatus && previousStatus !== order.status) {
+                playNotificationSound();
+            }
+            previousStatus = order.status;
+
+            // If paid, show thank you message
+            if (order.status === 'paid') {
+                orderStatus.innerHTML = `
+                    <div class="status-card" style="text-align:center;">
+                        <div style="font-size:4em; margin-bottom:15px;">✅</div>
+                        <h2>Pembayaran Berhasil!</h2>
+                        <p style="color:#6c757d; margin:15px 0;">Terima kasih telah memesan di KAGO</p>
+                        <div class="queue-number">
+                            <h2>Nomor Pesanan</h2>
+                            <div class="number">${order.order_number}</div>
+                        </div>
+                        <p><strong>💰 Total:</strong> Rp ${order.total.toLocaleString()}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            orderStatus.innerHTML = `
+                <div class="queue-number">
+                    <h2>📋 Nomor Antrian</h2>
+                    <div class="number">${order.order_number}</div>
+                </div>
+
+                <div class="status-card">
+                    <h3>📊 Progress Pesanan</h3>
+                    <div class="status-timeline">
+                        ${statusSteps.map((step, index) => `
+                            <div class="timeline-step ${index < currentStepIndex ? 'active' : ''} ${index === currentStepIndex ? 'current' : ''}">
+                                <div class="timeline-icon">${statusIcons[step]}</div>
+                                <div class="timeline-label">${statusLabels[step]}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <div class="status-card">
+                    <h3>📊 Status: <span class="status-${order.status}">${STATUS_LABELS[order.status] || order.status}</span></h3>
+                    <p><strong>💰 Total:</strong> Rp ${order.total.toLocaleString()}</p>
+                    ${order.table_id ? `<p><strong>🪑 Meja:</strong> ${order.table_id}</p>` : ''}
+                </div>
+
+                <div class="status-card">
+                    <h3>🍽️ Item Pesanan</h3>
+                    <ul style="margin-left:20px;">
+                        ${order.items.map(item => `
+                            <li>• ${item.name} x${item.qty} - Rp ${(item.price * item.qty).toLocaleString()}</li>
+                        `).join('')}
+                    </ul>
+                </div>
+
+                <p style="text-align:center; color:#6c757d; font-size:12px; margin-top:15px;">
+                    🔄 Status update secara real-time
+                </p>
+            `;
+        }
+
+        if (orderId) {
+            // Try realtime first, fallback to one-time load
+            if (initFirebase()) {
+                const unsub = listenOrderStatus(orderId, order => {
+                    renderOrderStatus(order);
+                });
+
+                if (unsub) {
+                    window.addEventListener('beforeunload', () => unsub());
+                } else {
+                    loadOrderStatus(orderId);
+                }
+            } else {
+                loadOrderStatus(orderId);
+            }
+        } else {
+            loading.textContent = '❌ Tidak ada pesanan';
+        }
+    </script>
+</body>
+</html>

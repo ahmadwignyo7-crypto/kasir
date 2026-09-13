@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KAGO - Pembayaran</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .payment-container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .payment-summary {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+        .payment-summary h3 {
+            border-bottom: 2px solid #f0f2f5;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .payment-summary .item-list {
+            margin: 15px 0;
+        }
+        .payment-summary .item-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f2f5;
+        }
+        .payment-summary .total-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.3em;
+            font-weight: bold;
+            padding-top: 15px;
+            border-top: 2px solid #0f3460;
+            margin-top: 10px;
+        }
+        .payment-buttons {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .payment-buttons button {
+            flex: 1;
+            padding: 15px;
+            font-size: 16px;
+        }
+        .cash-input-group {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin: 15px 0;
+        }
+        .cash-input-group input {
+            font-size: 18px;
+            padding: 15px;
+            text-align: center;
+        }
+        .quick-amounts {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .quick-amounts button {
+            flex: 1;
+            min-width: 80px;
+            padding: 10px;
+            background: #e9ecef;
+            color: #333;
+            font-size: 13px;
+        }
+        .quick-amounts button:hover {
+            background: #0f3460;
+            color: white;
+        }
+        .change-display {
+            text-align: center;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        .change-display.positive {
+            background: #d4edda;
+            color: #155724;
+        }
+        .change-display.negative {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .qris-container {
+            text-align: center;
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .qris-container img {
+            margin: 15px 0;
+            border: 3px solid #f0f2f5;
+            border-radius: 8px;
+        }
+        .qris-timer {
+            font-size: 14px;
+            color: #6c757d;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="payment-container">
+            <header>
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <h1>💳 Pembayaran</h1>
+                    <span id="table-badge" class="table-badge" style="display:none;"></span>
+                </div>
+            </header>
+
+            <div id="loading">⏳ Memuat pesanan...</div>
+            <div id="order-content" style="display:none;">
+                <div class="payment-summary" id="payment-summary"></div>
+
+                <div id="payment-methods" style="display:none;">
+                    <div class="payment-buttons">
+                        <button class="btn-cash" onclick="selectPayment('cash')">💵 Tunai</button>
+                        <button class="btn-qris" onclick="selectPayment('qris')">📱 QRIS</button>
+                    </div>
+                </div>
+
+                <div id="cash-payment" style="display: none;">
+                    <div class="cash-input-group">
+                        <h3>💵 Masukkan Jumlah Bayar</h3>
+                        <input type="number" id="amount-paid" placeholder="0" autofocus>
+                        <div class="quick-amounts">
+                            <button onclick="setAmount(${currentOrder?.total || 0})">Uang Pas</button>
+                            <button onclick="setAmount(${(currentOrder?.total || 0) + 10000})">+10rb</button>
+                            <button onclick="setAmount(${(currentOrder?.total || 0) + 20000})">+20rb</button>
+                            <button onclick="setAmount(${(currentOrder?.total || 0) + 50000})">+50rb</button>
+                            <button onclick="setAmount(${(currentOrder?.total || 0) + 100000})">+100rb</button>
+                        </div>
+                        <div id="change-display" class="change-display" style="display:none;"></div>
+                        <button class="btn-submit" onclick="handleCashPayment()" style="width:100%; margin-top:15px;" id="btn-pay" disabled>
+                            ✅ Bayar Sekarang
+                        </button>
+                    </div>
+                </div>
+
+                <div id="qris-payment" style="display: none;">
+                    <div class="qris-container">
+                        <h3>📱 Scan QRIS</h3>
+                        <img id="qris-image" src="" alt="QRIS QR Code" width="250">
+                        <p class="qris-timer" id="qris-timer">QRIS berlaku selama 5 menit</p>
+                        <button onclick="simulateQRIS()" class="btn-submit" style="width:100%;">
+                            ✅ Simulasi Pembayaran Berhasil
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/cart.js"></script>
+    <script src="../js/realtime.js"></script>
+    <script src="../js/order.js"></script>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderId = urlParams.get('order_id');
+        const loading = document.getElementById('loading');
+        const orderContent = document.getElementById('order-content');
+        const paymentMethods = document.getElementById('payment-methods');
+        const tableBadge = document.getElementById('table-badge');
+        const btnPay = document.getElementById('btn-pay');
+
+        const meja = getTableFromURL();
+        if (meja) {
+            tableBadge.textContent = '🪑 Meja ' + meja;
+            tableBadge.style.display = 'inline-block';
+            document.title = 'KAGO - Pembayaran Meja ' + meja;
+        }
+
+        if (orderId) {
+            loadOrderForPayment(orderId).then(() => {
+                loading.style.display = 'none';
+                orderContent.style.display = 'block';
+                paymentMethods.style.display = 'block';
+                updateQuickAmounts();
+            });
+        } else {
+            loading.textContent = '❌ Tidak ada pesanan';
+        }
+
+        function updateQuickAmounts() {
+            if (!currentOrder) return;
+            const total = currentOrder.total;
+            document.querySelector('.quick-amounts').innerHTML = `
+                <button onclick="setAmount(${total})">Uang Pas</button>
+                <button onclick="setAmount(${Math.ceil(total / 10000) * 10000 + 10000})">+10rb</button>
+                <button onclick="setAmount(${Math.ceil(total / 10000) * 10000 + 20000})">+20rb</button>
+                <button onclick="setAmount(${Math.ceil(total / 10000) * 10000 + 50000})">+50rb</button>
+                <button onclick="setAmount(${Math.ceil(total / 10000) * 10000 + 100000})">+100rb</button>
+            `;
+        }
+
+        function setAmount(amount) {
+            document.getElementById('amount-paid').value = amount;
+            updateChangeDisplay();
+        }
+
+        function updateChangeDisplay() {
+            const amount = parseInt(document.getElementById('amount-paid').value) || 0;
+            const total = currentOrder ? currentOrder.total : 0;
+            const change = amount - total;
+            const changeDisplay = document.getElementById('change-display');
+
+            if (amount > 0) {
+                changeDisplay.style.display = 'block';
+                if (change >= 0) {
+                    changeDisplay.className = 'change-display positive';
+                    changeDisplay.innerHTML = `✅ Kembalian: Rp ${change.toLocaleString()}`;
+                    btnPay.disabled = false;
+                } else {
+                    changeDisplay.className = 'change-display negative';
+                    changeDisplay.innerHTML = `❌ Kurang: Rp ${Math.abs(change).toLocaleString()}`;
+                    btnPay.disabled = true;
+                }
+            } else {
+                changeDisplay.style.display = 'none';
+                btnPay.disabled = true;
+            }
+        }
+
+        document.getElementById('amount-paid').addEventListener('input', updateChangeDisplay);
+
+        function displayOrderSummary(order) {
+            const summary = document.getElementById('payment-summary');
+            if (!summary) return;
+
+            summary.innerHTML = `
+                <h3>🧾 Pesanan #${order.order_number}</h3>
+                <ul class="item-list">
+                    ${order.items.map(item => `
+                        <li>
+                            <span>${item.name} x${item.qty}</span>
+                            <span>Rp ${(item.price * item.qty).toLocaleString()}</span>
+                        </li>
+                    `).join('')}
+                </ul>
+                <div class="total-row">
+                    <span>Total</span>
+                    <span>Rp ${order.total.toLocaleString()}</span>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

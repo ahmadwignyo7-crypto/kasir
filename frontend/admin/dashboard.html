@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KAGO - Dashboard Admin</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚙️ Dashboard Admin</h1>
+            <button class="btn-logout" onclick="logout()">Keluar</button>
+        </header>
+        <div class="quick-actions">
+            <a href="menu.html" class="btn-action">🍽️ Kelola Menu</a>
+            <a href="tables.html" class="btn-action">🪑 Kelola Meja</a>
+            <a href="reports.html" class="btn-action">📊 Laporan</a>
+        </div>
+        <h2>📊 Statistik Sistem</h2>
+        <div id="loading">⏳ Memuat data...</div>
+        <div id="system-stats"></div>
+    </div>
+    <script src="../js/api.js"></script>
+    <script>
+        if (!isLoggedIn() || getUserRole() !== 'admin') {
+            window.location.href = '/login.html';
+        }
+
+        const systemStats = document.getElementById('system-stats');
+        const loading = document.getElementById('loading');
+
+        Promise.all([getMenus(), getTables(), getOrders()])
+            .then(([menus, tables, orders]) => {
+                loading.style.display = 'none';
+                systemStats.innerHTML = `
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">🍽️</div>
+                            <h3>${menus.length}</h3>
+                            <p>Menu</p>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">🪑</div>
+                            <h3>${tables.length}</h3>
+                            <p>Meja</p>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">📋</div>
+                            <h3>${orders.length}</h3>
+                            <p>Total Pesanan</p>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">⏳</div>
+                            <h3>${orders.filter(o => o.status === 'pending').length}</h3>
+                            <p>Menunggu</p>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">✅</div>
+                            <h3>${orders.filter(o => o.status === 'paid').length}</h3>
+                            <p>Sudah Bayar</p>
+                        </div>
+                    </div>
+                `;
+            })
+            .catch(err => {
+                loading.textContent = '❌ Gagal memuat data';
+            });
+    </script>
+</body>
+</html>

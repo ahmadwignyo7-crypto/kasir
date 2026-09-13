@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KAGO - Struk</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧾 Struk</h1>
+            <div style="display:flex; gap:8px;">
+                <a href="dashboard.html" class="btn-back">← Kembali</a>
+                <button class="btn-logout" onclick="logout()">Keluar</button>
+            </div>
+        </header>
+        <div id="loading">⏳ Memuat struk...</div>
+        <div id="receipt-content"></div>
+        <div style="text-align: center; margin-top: 15px;">
+            <button onclick="printReceipt()">🖨️ Cetak Struk</button>
+        </div>
+    </div>
+    <script src="../js/api.js"></script>
+    <script>
+        if (!isLoggedIn() || getUserRole() !== 'kasir') {
+            window.location.href = '/login.html';
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderId = urlParams.get('order_id');
+        const loading = document.getElementById('loading');
+        const receiptContent = document.getElementById('receipt-content');
+
+        if (orderId) {
+            getOrder(orderId)
+                .then(order => {
+                    loading.style.display = 'none';
+                    const dateStr = order.created_at && order.created_at._seconds
+                        ? new Date(order.created_at._seconds * 1000).toLocaleString('id-ID')
+                        : new Date().toLocaleString('id-ID');
+
+                    receiptContent.innerHTML = `
+                        <div class="receipt">
+                            <h2>🍽️ KAGO</h2>
+                            <p class="receipt-divider">================================</p>
+                            <p><strong>🧾 Order:</strong> #${order.order_number}</p>
+                            <p><strong>📅 Tanggal:</strong> ${dateStr}</p>
+                            <p><strong>🪑 Meja:</strong> ${order.table_id || '-'}</p>
+                            <p class="receipt-divider">--------------------------------</p>
+                            <div class="receipt-items">
+                                ${order.items.map(item => `
+                                    <p>${item.name} x${item.qty}</p>
+                                    <p class="receipt-price">  Rp ${(item.price * item.qty).toLocaleString()}</p>
+                                `).join('')}
+                            </div>
+                            <p class="receipt-divider">================================</p>
+                            <p><strong>💰 Total:</strong> Rp ${order.total.toLocaleString()}</p>
+                            <p><strong>📊 Status:</strong> ${order.status}</p>
+                            <p class="receipt-divider">================================</p>
+                            <p class="receipt-footer">🙏 Terima kasih!</p>
+                        </div>
+                    `;
+                })
+                .catch(err => {
+                    loading.textContent = '❌ Gagal memuat struk';
+                });
+        } else {
+            loading.textContent = '❌ Tidak ada pesanan';
+        }
+
+        function printReceipt() {
+            window.print();
+        }
+    </script>
+</body>
+</html>

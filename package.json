@@ -1,0 +1,12 @@
+{
+  "name": "kago",
+  "version": "1.0.0",
+  "description": "Sistem Kasir & Pemesanan Berbasis Web",
+  "main": "backend/run.py",
+  "scripts": {
+    "start": "python backend/run.py",
+    "dev": "python backend/run.py"
+  },
+  "author": "",
+  "license": "ISC"
+}

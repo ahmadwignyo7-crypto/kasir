@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KAGO - Daftar Pesanan</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .orders-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            align-items: start;
+        }
+
+        .order-card {
+            background: white;
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border-left: 4px solid #dee2e6;
+        }
+        .order-card.pending { border-left-color: #e67e22; }
+        .order-card.processing { border-left-color: #3498db; }
+        .order-card.completed { border-left-color: #27ae60; }
+        .order-card.paid { border-left-color: #8e44ad; }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        .order-header h3 { margin: 0; font-size: 0.95em; }
+
+        .status-label {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+        .status-label.pending { background: #fff3e0; color: #e65100; }
+        .status-label.processing { background: #e3f2fd; color: #1565c0; }
+        .status-label.completed { background: #e8f5e9; color: #2e7d32; }
+        .status-label.paid { background: #f3e5f5; color: #7b1fa2; }
+
+        .order-meta {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 6px;
+            font-size: 0.8em;
+            color: #495057;
+        }
+
+        .order-type-badge {
+            display: inline-block;
+            padding: 1px 6px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+        .order-type-badge.qr { background: #e7f1ff; color: #0f3460; }
+        .order-type-badge.kasir { background: #d4edda; color: #155724; }
+        .order-type-badge.dine_in { background: #d4edda; color: #155724; }
+        .order-type-badge.takeaway { background: #fff3e0; color: #e65100; }
+
+        .order-items {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 6px;
+            margin-bottom: 8px;
+            max-height: 80px;
+            overflow-y: auto;
+        }
+        .order-items p {
+            margin: 1px 0;
+            font-size: 0.78em;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .order-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn-process {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 11px;
+            flex: 1;
+        }
+        .btn-ready {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 11px;
+            flex: 1;
+        }
+        .btn-pay {
+            background: #27ae60;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 11px;
+            flex: 1;
+            text-align: center;
+        }
+        .btn-receipt {
+            background: #8e44ad;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 11px;
+            flex: 1;
+            text-align: center;
+        }
+
+        .no-orders {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+            font-size: 1.1em;
+            grid-column: 1 / -1;
+        }
+
+        @media (max-width: 768px) {
+            .orders-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Daftar Pesanan</h1>
+            <div style="display:flex; gap:8px;">
+                <a href="dashboard.html" class="btn-back">Kembali</a>
+                <button class="btn-logout" onclick="logout()">Keluar</button>
+            </div>
+        </header>
+        <div id="loading">Memuat pesanan...</div>
+        <div id="orders-list" class="orders-grid"></div>
+    </div>
+    <script src="../js/api.js"></script>
+    <script>
+        if (!isLoggedIn() || getUserRole() !== 'kasir') {
+            window.location.href = '/login.html';
+        }
+
+        const ordersList = document.getElementById('orders-list');
+        const loading = document.getElementById('loading');
+
+        const statusMap = {
+            'pending': 'Menunggu',
+            'processing': 'Diproses',
+            'completed': 'Selesai',
+            'paid': 'Dibayar'
+        };
+
+        const orderTypeMap = {
+            'qr': 'QR',
+            'kasir': 'Kasir',
+            'dine_in': 'Dine In',
+            'takeaway': 'Take Away'
+        };
+
+        async function loadOrders() {
+            try {
+                const orders = await getOrders();
+                loading.style.display = 'none';
+
+                if (orders.length === 0) {
+                    ordersList.innerHTML = '<p class="no-orders">Belum ada pesanan</p>';
+                    return;
+                }
+
+                ordersList.innerHTML = orders.map(order => {
+                    var maxItems = 2;
+                    var items = order.items.slice(0, maxItems);
+                    var moreCount = order.items.length - maxItems;
+                    var itemsHtml = items.map(item =>
+                        '<p>' + item.name + ' x' + item.qty + '</p>'
+                    ).join('');
+                    if (moreCount > 0) {
+                        itemsHtml += '<p style="color:#888; font-style:italic;">+' + moreCount + ' item lainnya</p>';
+                    }
+
+                    return '<div class="order-card ' + order.status + '">' +
+                        '<div class="order-header">' +
+                            '<h3>#' + order.order_number + '</h3>' +
+                            '<span class="status-label ' + order.status + '">' + (statusMap[order.status] || order.status) + '</span>' +
+                        '</div>' +
+                        '<div class="order-meta">' +
+                            '<span>Meja ' + (order.table_id || '-') + '</span>' +
+                            '<span>Rp ' + order.total.toLocaleString() + '</span>' +
+                            (order.order_type ? '<span class="order-type-badge ' + order.order_type + '">' + (orderTypeMap[order.order_type] || order.order_type) + '</span>' : '') +
+                        '</div>' +
+                        '<div class="order-items">' + itemsHtml + '</div>' +
+                        '<div class="order-actions">' +
+                            (order.status === 'pending' ? '<button onclick="updateStatus(\'' + order.id + '\', \'processing\')" class="btn-process">Mulai Proses</button>' : '') +
+                            (order.status === 'processing' ? '<button onclick="updateStatus(\'' + order.id + '\', \'completed\')" class="btn-ready">Selesai</button>' : '') +
+                            (order.status === 'completed' ? '<a href="payment.html?order_id=' + order.id + '" class="btn-pay">Bayar</a>' : '') +
+                            (order.status === 'paid' ? '<a href="receipt.html?order_id=' + order.id + '" class="btn-receipt">Struk</a>' : '') +
+                        '</div>' +
+                    '</div>';
+                }).join('');
+            } catch (err) {
+                loading.textContent = 'Gagal memuat pesanan';
+            }
+        }
+
+        async function updateStatus(orderId, status) {
+            try {
+                await updateOrderStatus(orderId, status);
+                loadOrders();
+            } catch (err) {
+                alert('Gagal update status: ' + err.message);
+            }
+        }
+
+        loadOrders();
+    </script>
+</body>
+</html>

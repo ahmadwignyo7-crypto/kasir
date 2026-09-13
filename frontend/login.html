@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KAGO - Login</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="login-page">
+            <div class="login-header">
+                <div class="login-logo">🍽️</div>
+                <h1>KAGO</h1>
+                <p>Sistem Kasir & Pemesanan</p>
+            </div>
+
+            <div class="login-card">
+                <h2>Masuk ke Akun Anda</h2>
+
+                <div id="error-message" class="login-error" style="display:none;"></div>
+
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" placeholder="Masukkan email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" placeholder="Masukkan password" required>
+                    </div>
+                    <button type="submit" class="btn-login" id="btn-login">Masuk</button>
+                </form>
+
+                <div class="login-footer">
+                    <a href="/">Kembali ke Beranda</a>
+                </div>
+            </div>
+
+
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script>
+        if (isLoggedIn()) {
+            redirectByRole(getUserRole());
+        }
+
+        const loginForm = document.getElementById('login-form');
+        const errorMsg = document.getElementById('error-message');
+        const btnLogin = document.getElementById('btn-login');
+
+        function redirectByRole(role) {
+            switch (role) {
+                case 'admin':
+                    window.location.href = '/admin/dashboard.html';
+                    break;
+                case 'kasir':
+                    window.location.href = '/cashier/dashboard.html';
+                    break;
+                case 'dapur':
+                    window.location.href = '/kitchen/dashboard.html';
+                    break;
+                default:
+                    window.location.href = '/';
+            }
+        }
+
+        async function doLogin(email, password) {
+            errorMsg.style.display = 'none';
+            btnLogin.disabled = true;
+            btnLogin.textContent = 'Masuk...';
+
+            try {
+                const result = await login(email, password);
+                if (result.token) {
+                    redirectByRole(result.role);
+                } else {
+                    errorMsg.textContent = result.error || 'Login gagal';
+                    errorMsg.style.display = 'block';
+                }
+            } catch (err) {
+                errorMsg.textContent = err.message || 'Terjadi kesalahan, coba lagi';
+                errorMsg.style.display = 'block';
+            } finally {
+                btnLogin.disabled = false;
+                btnLogin.textContent = 'Masuk';
+            }
+        }
+
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+
+            if (!email || !password) {
+                errorMsg.textContent = 'Email dan password harus diisi';
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            doLogin(email, password);
+        });
+    </script>
+</body>
+</html>

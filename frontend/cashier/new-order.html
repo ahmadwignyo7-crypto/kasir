@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KAGO - Pesanan Baru</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .menu-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .menu-grid .menu-card {
+            background: white;
+            border-radius: 10px;
+            padding: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        }
+        .menu-grid .menu-card h3 {
+            margin: 0 0 4px 0;
+            font-size: 0.95em;
+        }
+        .menu-grid .menu-card .price {
+            color: #27ae60;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+            font-size: 0.9em;
+        }
+        .menu-grid .menu-card button {
+            width: 100%;
+            padding: 6px;
+            border-radius: 6px;
+            border: none;
+            background: #0f3460;
+            color: white;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .menu-grid .menu-card button:hover {
+            background: #e94560;
+        }
+        .order-item-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 8px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 6px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+        }
+        .order-item-row span:first-child {
+            flex: 1;
+            font-weight: 500;
+        }
+        .qty-controls {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .qty-controls button {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 1px solid #dee2e6;
+            background: white;
+            cursor: pointer;
+            font-weight: 700;
+        }
+        .qty-controls button:hover {
+            background: #f0f0f0;
+        }
+        .order-item-row .btn-remove {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        @media (max-width: 768px) {
+            .menu-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📝 Pesanan Baru</h1>
+            <div style="display:flex; gap:8px;">
+                <a href="dashboard.html" class="btn-back">← Kembali</a>
+                <button class="btn-logout" onclick="logout()">Keluar</button>
+            </div>
+        </header>
+
+        <div class="order-form">
+            <div class="form-group">
+                <label>🪑 Nomor Meja</label>
+                <select id="table-select">
+                    <option value="">-- Pilih Meja --</option>
+                </select>
+            </div>
+
+            <h2>🍽️ Pilih Menu</h2>
+            <div id="menu-list"></div>
+
+            <h2>🛒 Item Dipilih</h2>
+            <div id="order-items"></div>
+            <div id="order-total"></div>
+
+            <button class="btn-submit" onclick="submitOrder()" id="btn-submit" disabled>✅ Buat Pesanan</button>
+        </div>
+    </div>
+    <script src="../js/api.js"></script>
+    <script>
+        if (!isLoggedIn() || getUserRole() !== 'kasir') {
+            window.location.href = '/login.html';
+        }
+
+        let selectedItems = [];
+
+        async function init() {
+            try {
+                const [menus, tables] = await Promise.all([getMenus(), getTables()]);
+
+                const tableSelect = document.getElementById('table-select');
+                tables.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.table_number;
+                    opt.textContent = `🪑 Meja ${t.table_number}`;
+                    tableSelect.appendChild(opt);
+                });
+
+                const menuList = document.getElementById('menu-list');
+                menuList.className = 'menu-grid';
+                menuList.innerHTML = menus.filter(m => m.is_available !== false).map(menu => `
+                    <div class="menu-card">
+                        <h3>${menu.name}</h3>
+                        <p class="price">💰 Rp ${menu.price.toLocaleString()}</p>
+                        <button onclick="addItem('${menu.id}', '${menu.name.replace(/'/g, "\\'")}', ${menu.price})">➕ Pilih</button>
+                    </div>
+                `).join('');
+            } catch (err) {
+                alert('Gagal memuat data: ' + err.message);
+            }
+        }
+
+        function addItem(menuId, name, price) {
+            const existing = selectedItems.find(i => i.menu_id === menuId);
+            if (existing) {
+                existing.qty += 1;
+            } else {
+                selectedItems.push({ menu_id: menuId, name, price, qty: 1, note: '' });
+            }
+            renderOrderItems();
+        }
+
+        function removeItem(menuId) {
+            selectedItems = selectedItems.filter(i => i.menu_id !== menuId);
+            renderOrderItems();
+        }
+
+        function updateQty(menuId, qty) {
+            const item = selectedItems.find(i => i.menu_id === menuId);
+            if (item) {
+                item.qty = qty;
+                if (item.qty <= 0) removeItem(menuId);
+                else renderOrderItems();
+            }
+        }
+
+        function renderOrderItems() {
+            const orderItems = document.getElementById('order-items');
+            const orderTotal = document.getElementById('order-total');
+            const btnSubmit = document.getElementById('btn-submit');
+
+            if (selectedItems.length === 0) {
+                orderItems.innerHTML = '<p>📋 Belum ada item dipilih</p>';
+                orderTotal.innerHTML = '';
+                btnSubmit.disabled = true;
+                return;
+            }
+
+            const total = selectedItems.reduce((sum, i) => sum + (i.price * i.qty), 0);
+
+            orderItems.innerHTML = selectedItems.map(item => `
+                <div class="order-item-row">
+                    <span>${item.name}</span>
+                    <div class="qty-controls">
+                        <button onclick="updateQty('${item.menu_id}', ${item.qty - 1})">-</button>
+                        <span>${item.qty}</span>
+                        <button onclick="updateQty('${item.menu_id}', ${item.qty + 1})">+</button>
+                    </div>
+                    <span>Rp ${(item.price * item.qty).toLocaleString()}</span>
+                    <button onclick="removeItem('${item.menu_id}')">🗑️ Hapus</button>
+                </div>
+            `).join('');
+
+            orderTotal.innerHTML = `<h3>💰 Total: Rp ${total.toLocaleString()}</h3>`;
+            btnSubmit.disabled = false;
+        }
+
+        async function submitOrder() {
+            const tableId = document.getElementById('table-select').value;
+            if (!tableId) {
+                alert('⚠️ Pilih meja terlebih dahulu');
+                return;
+            }
+            if (selectedItems.length === 0) {
+                alert('⚠️ Pilih minimal 1 menu');
+                return;
+            }
+
+            const total = selectedItems.reduce((sum, i) => sum + (i.price * i.qty), 0);
+            const orderData = {
+                table_id: tableId,
+                order_type: 'kasir',
+                total,
+                items: selectedItems
+            };
+
+            try {
+                const order = await createOrder(orderData);
+                alert(`✅ Pesanan #${order.order_number} berhasil dibuat!`);
+                window.location.href = `payment.html?order_id=${order.id}`;
+            } catch (err) {
+                alert('❌ Gagal membuat pesanan: ' + err.message);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

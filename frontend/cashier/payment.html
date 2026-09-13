@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KAGO - Proses Pembayaran</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .payment-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .payment-modal.active {
+            display: flex;
+        }
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+        .modal-content h2 {
+            margin-bottom: 20px;
+        }
+        .modal-total {
+            font-size: 2em;
+            font-weight: bold;
+            color: #0f3460;
+            margin: 15px 0;
+        }
+        .modal-content input {
+            font-size: 20px;
+            text-align: center;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .modal-buttons button {
+            flex: 1;
+            padding: 12px;
+        }
+        .modal-buttons .btn-cancel {
+            background: #6c757d;
+        }
+        .modal-buttons .btn-confirm {
+            background: #28a745;
+        }
+        .change-display {
+            font-size: 1.2em;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+        .change-display.positive {
+            background: #d4edda;
+            color: #155724;
+        }
+        .change-display.negative {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>💳 Proses Pembayaran</h1>
+            <div style="display:flex; gap:8px;">
+                <a href="dashboard.html" class="btn-back">← Kembali</a>
+                <button class="btn-logout" onclick="logout()">Keluar</button>
+            </div>
+        </header>
+        <div id="loading">⏳ Memuat pesanan...</div>
+        <div id="pending-orders"></div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div class="payment-modal" id="payment-modal">
+        <div class="modal-content">
+            <h2>💵 Pembayaran Tunai</h2>
+            <p id="modal-order-info"></p>
+            <div class="modal-total" id="modal-total"></div>
+            <input type="number" id="modal-amount" placeholder="Jumlah bayar">
+            <div id="modal-change" class="change-display" style="display:none;"></div>
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closePaymentModal()">Batal</button>
+                <button class="btn-confirm" onclick="confirmPayment()" id="btn-confirm" disabled>Bayar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/api.js"></script>
+    <script>
+        if (!isLoggedIn() || getUserRole() !== 'kasir') {
+            window.location.href = '/login.html';
+        }
+
+        const pendingOrders = document.getElementById('pending-orders');
+        const loading = document.getElementById('loading');
+        const paymentModal = document.getElementById('payment-modal');
+        const modalAmount = document.getElementById('modal-amount');
+        const modalChange = document.getElementById('modal-change');
+        const btnConfirm = document.getElementById('btn-confirm');
+
+        let selectedOrder = null;
+
+        async function loadPendingOrders() {
+            try {
+                const orders = await getOrders();
+                loading.style.display = 'none';
+
+                const pending = orders.filter(o => o.status === 'completed');
+                if (pending.length === 0) {
+                    pendingOrders.innerHTML = '<p>📋 Tidak ada pesanan yang perlu dibayar</p>';
+                    return;
+                }
+
+                pendingOrders.innerHTML = pending.map(order => `
+                    <div class="order-card completed">
+                        <div class="order-header">
+                            <h3>🧾 #${order.order_number}</h3>
+                            <span class="status-completed">Siap Bayar</span>
+                        </div>
+                        <p>🪑 Meja: ${order.table_id || '-'}</p>
+                        <p>📝 Tipe: ${order.order_type === 'qr' ? '📱 QR' : '🏪 Kasir'}</p>
+                        <div class="order-items">
+                            ${order.items.map(item => `
+                                <p>• ${item.name} x${item.qty}</p>
+                            `).join('')}
+                        </div>
+                        <p style="font-size:1.2em; font-weight:bold; margin-top:10px;">
+                            💰 Total: Rp ${order.total.toLocaleString()}
+                        </p>
+                        <button onclick="openPaymentModal('${order.id}', '${order.order_number}', ${order.total})" class="btn-pay" style="width:100%; margin-top:10px;">
+                            💳 Proses Pembayaran
+                        </button>
+                    </div>
+                `).join('');
+            } catch (err) {
+                loading.textContent = '❌ Gagal memuat pesanan';
+            }
+        }
+
+        function openPaymentModal(orderId, orderNumber, total) {
+            selectedOrder = { id: orderId, total };
+            document.getElementById('modal-order-info').textContent = `Pesanan #${orderNumber}`;
+            document.getElementById('modal-total').textContent = `Rp ${total.toLocaleString()}`;
+            modalAmount.value = '';
+            modalChange.style.display = 'none';
+            btnConfirm.disabled = true;
+            paymentModal.classList.add('active');
+            modalAmount.focus();
+        }
+
+        function closePaymentModal() {
+            paymentModal.classList.remove('active');
+            selectedOrder = null;
+        }
+
+        modalAmount.addEventListener('input', function() {
+            const amount = parseInt(this.value) || 0;
+            const total = selectedOrder ? selectedOrder.total : 0;
+            const change = amount - total;
+
+            if (amount > 0) {
+                modalChange.style.display = 'block';
+                if (change >= 0) {
+                    modalChange.className = 'change-display positive';
+                    modalChange.textContent = `✅ Kembalian: Rp ${change.toLocaleString()}`;
+                    btnConfirm.disabled = false;
+                } else {
+                    modalChange.className = 'change-display negative';
+                    modalChange.textContent = `❌ Kurang: Rp ${Math.abs(change).toLocaleString()}`;
+                    btnConfirm.disabled = true;
+                }
+            } else {
+                modalChange.style.display = 'none';
+                btnConfirm.disabled = true;
+            }
+        });
+
+        async function confirmPayment() {
+            if (!selectedOrder) return;
+
+            const amountPaid = parseInt(modalAmount.value);
+            if (isNaN(amountPaid) || amountPaid < selectedOrder.total) {
+                alert('❌ Jumlah bayar tidak valid');
+                return;
+            }
+
+            try {
+                const payment = await processPaymentAPI({
+                    order_id: selectedOrder.id,
+                    method: 'cash',
+                    amount_paid: amountPaid
+                });
+
+                if (payment.error) {
+                    alert('❌ ' + payment.error);
+                } else {
+                    const change = payment.change || 0;
+                    alert(`✅ Pembayaran berhasil!\n🧾 Pesanan #${selectedOrder.id}\n💵 Kembalian: Rp ${change.toLocaleString()}`);
+                    closePaymentModal();
+                    loadPendingOrders();
+                }
+            } catch (err) {
+                alert('❌ Gagal memproses pembayaran: ' + err.message);
+            }
+        }
+
+        // Close modal on outside click
+        paymentModal.addEventListener('click', function(e) {
+            if (e.target === paymentModal) {
+                closePaymentModal();
+            }
+        });
+
+        loadPendingOrders();
+    </script>
+</body>
+</html>
