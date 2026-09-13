@@ -1,6 +1,7 @@
 import os
 import json
 import base64
+import hashlib
 import logging
 
 logger = logging.getLogger(__name__)
@@ -14,9 +15,17 @@ except Exception:
 
 backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+def _sanitize_hmac_key(key):
+    if not key:
+        return key
+    if '-----BEGIN' in key or len(key) > 512:
+        logger.warning('JWT key looks like asymmetric key, hashing to HMAC key')
+        return hashlib.sha256(key.encode('utf-8')).hexdigest()
+    return key
+
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'kago-super-secret-key-2024!')
-    JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'kago-jwt-secret-key-long-enough-for-sha256!')
+    JWT_SECRET_KEY = _sanitize_hmac_key(os.getenv('JWT_SECRET_KEY', 'kago-jwt-secret-key-long-enough-for-sha256!'))
     
     FIREBASE_CREDENTIALS = None
     _firebase_creds = os.getenv('FIREBASE_CREDENTIALS')
