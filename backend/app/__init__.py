@@ -78,6 +78,19 @@ def create_app():
         qr_dir = os.path.abspath(qr_dir)
         return send_from_directory(qr_dir, filename)
 
+    # Health check endpoint
+    @app.route('/api/health')
+    def health_check():
+        firebase_configured = Config.FIREBASE_CREDENTIALS is not None
+        creds_type = None
+        if firebase_configured:
+            creds_type = 'dict' if isinstance(Config.FIREBASE_CREDENTIALS, dict) else 'file'
+        return jsonify({
+            'status': 'ok',
+            'firebase_configured': firebase_configured,
+            'firebase_credentials_type': creds_type,
+        })
+
     # Register blueprints
     from .routes.auth_routes import auth_bp
     from .routes.menu_routes import menu_bp

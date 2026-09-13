@@ -113,7 +113,11 @@
             .catch(function(err) {
                 loading.style.display = 'none';
                 errorMsg.style.display = 'block';
-                errorMsg.textContent = 'Gagal memuat menu: ' + err.message;
+                var msg = err.message || 'Unknown error';
+                if (msg.includes('Firebase') || msg.includes('credentials') || msg.includes('not configured')) {
+                    msg = 'Server belum dikonfigurasi. Hubungi admin untuk mengatur Firebase credentials.';
+                }
+                errorMsg.textContent = 'Gagal memuat menu: ' + msg;
             });
 
         updateCartBadge();

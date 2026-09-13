@@ -42,10 +42,14 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
         const response = await fetch(url, options);
         const result = await response.json();
         if (!response.ok) {
-            throw new Error(result.error || `HTTP error! status: ${response.status}`);
+            const errMsg = result.error || `HTTP error! status: ${response.status}`;
+            throw new Error(errMsg);
         }
         return result;
     } catch (error) {
+        if (error.message && error.message.includes('Failed to fetch')) {
+            throw new Error('Gagal terhubung ke server');
+        }
         console.error('API request failed:', error);
         throw error;
     }

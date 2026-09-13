@@ -8,8 +8,10 @@ def get_all_menus():
     try:
         menus = get_menus()
         return jsonify(menus)
+    except RuntimeError as e:
+        return jsonify({'error': str(e)}), 500
     except Exception as e:
-        return jsonify({'error': 'Gagal memuat menu'}), 500
+        return jsonify({'error': 'Gagal memuat menu: ' + str(e)}), 500
 
 @menu_bp.route('/', methods=['POST'])
 def create_new_menu():
@@ -19,8 +21,10 @@ def create_new_menu():
     try:
         menu = create_menu(data)
         return jsonify(menu), 201
+    except RuntimeError as e:
+        return jsonify({'error': str(e)}), 500
     except Exception as e:
-        return jsonify({'error': 'Gagal membuat menu'}), 500
+        return jsonify({'error': 'Gagal membuat menu: ' + str(e)}), 500
 
 @menu_bp.route('/<menu_id>', methods=['PUT'])
 def update_existing_menu(menu_id):
@@ -30,24 +34,30 @@ def update_existing_menu(menu_id):
     try:
         menu = update_menu(menu_id, data)
         return jsonify(menu)
+    except RuntimeError as e:
+        return jsonify({'error': str(e)}), 500
     except Exception as e:
-        return jsonify({'error': 'Gagal update menu'}), 500
+        return jsonify({'error': 'Gagal update menu: ' + str(e)}), 500
 
 @menu_bp.route('/<menu_id>', methods=['DELETE'])
 def delete_existing_menu(menu_id):
     try:
         delete_menu(menu_id)
         return jsonify({'message': 'Menu berhasil dihapus'}), 200
+    except RuntimeError as e:
+        return jsonify({'error': str(e)}), 500
     except Exception as e:
-        return jsonify({'error': 'Gagal menghapus menu'}), 500
+        return jsonify({'error': 'Gagal menghapus menu: ' + str(e)}), 500
 
 @menu_bp.route('/categories', methods=['GET'])
 def get_all_categories():
     try:
         categories = get_categories()
         return jsonify(categories)
+    except RuntimeError as e:
+        return jsonify({'error': str(e)}), 500
     except Exception as e:
-        return jsonify({'error': 'Gagal memuat kategori'}), 500
+        return jsonify({'error': 'Gagal memuat kategori: ' + str(e)}), 500
 
 @menu_bp.route('/categories', methods=['POST'])
 def create_new_category():
@@ -57,13 +67,17 @@ def create_new_category():
     try:
         category = create_category(data)
         return jsonify(category), 201
+    except RuntimeError as e:
+        return jsonify({'error': str(e)}), 500
     except Exception as e:
-        return jsonify({'error': 'Gagal membuat kategori'}), 500
+        return jsonify({'error': 'Gagal membuat kategori: ' + str(e)}), 500
 
 @menu_bp.route('/categories/<cat_id>', methods=['DELETE'])
 def delete_existing_category(cat_id):
     try:
         delete_category(cat_id)
         return jsonify({'message': 'Kategori berhasil dihapus'}), 200
+    except RuntimeError as e:
+        return jsonify({'error': str(e)}), 500
     except Exception as e:
-        return jsonify({'error': 'Gagal menghapus kategori'}), 500
+        return jsonify({'error': 'Gagal menghapus kategori: ' + str(e)}), 500

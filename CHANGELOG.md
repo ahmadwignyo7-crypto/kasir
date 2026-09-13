@@ -1,5 +1,29 @@
 # Changelog — KAGO Sistem Kasir
 
+## v1.1.1 — Fix Menu Tidak Muncul di Vercel (13 Sep 2026)
+
+### Bug Fixes
+
+#### Menu data tidak muncul di Vercel
+- **Penyebab**: Firebase credentials belum di-set di Vercel env vars, semua API Firestore gagal
+- **__init__.py** — Tambah `/api/health` endpoint untuk diagnose Firebase config
+- **menu_routes.py** — Error message sekarang tampilkan detail error asli (bukan generic)
+- **api.js** — Handle `Failed to fetch` error dengan pesan "Gagal terhubung ke server"
+- **customer/menu.html** — Tampilkan pesan spesifik jika Firebase belum terkonfigurasi
+- **admin/menu.html** — Tampilkan detail error saat gagal memuat menu
+
+### Cara Fix di Vercel
+1. Buka **Vercel Dashboard** → Project → **Settings** → **Environment Variables**
+2. Tambah variabel ini (atau update jika sudah ada):
+   - `FIREBASE_CREDENTIALS` = **seluruh isi** `serviceAccountKey.json` (paste JSON langsung, bukan nama file)
+3. Set ke **Production**
+4. **Redeploy**
+
+### Testing
+- **43/43 test lulus**
+
+---
+
 ## v1.1.0 — Bug Fix & Vercel Deployment (13 Sep 2026)
 
 ### Bug Fixes
