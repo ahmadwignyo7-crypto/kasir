@@ -4,7 +4,14 @@
     {
       "src": "api/index.py",
       "use": "@vercel/python",
-      "config": { "maxDuration": 30 }
+      "config": {
+        "maxDuration": 30,
+        "includeFiles": [
+          "frontend/**",
+          "backend/app/**",
+          "backend/static/**"
+        ]
+      }
     }
   ],
   "routes": [
