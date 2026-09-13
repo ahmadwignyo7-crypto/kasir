@@ -18,9 +18,25 @@ backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def _sanitize_hmac_key(key):
     if not key:
         return key
-    if '-----BEGIN' in key or len(key) > 512:
-        logger.warning('JWT key looks like asymmetric key, hashing to HMAC key')
-        return hashlib.sha256(key.encode('utf-8')).hexdigest()
+    needs_hash = False
+    if '-----BEGIN' in key:
+        needs_hash = True
+        logger.warning('JWT key contains PEM header')
+    elif len(key) > 128:
+        needs_hash = True
+        logger.warning('JWT key is too long (%d chars), hashing', len(key))
+    else:
+        try:
+            raw = key.encode('utf-8')
+            if raw[:1] == b'\x30':
+                needs_hash = True
+                logger.warning('JWT key starts with DER sequence tag')
+        except Exception:
+            pass
+    if needs_hash:
+        hashed = hashlib.sha256(key.encode('utf-8')).hexdigest()
+        logger.info('JWT key hashed to HMAC key: %s...%s', hashed[:8], hashed[-8:])
+        return hashed
     return key
 
 class Config:
