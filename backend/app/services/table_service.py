@@ -1,4 +1,4 @@
-from ..services.auth_service import db
+from ..services.auth_service import _get_db
 from flask import request
 import qrcode
 import os
@@ -8,13 +8,13 @@ import io
 BASE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 QR_DIR = os.path.join(BASE_DIR, 'static', 'qr')
 
-# Check if running on Vercel (read-only filesystem)
 IS_VERCEL = os.environ.get('VERCEL', False)
 
 if not IS_VERCEL:
     os.makedirs(QR_DIR, exist_ok=True)
 
 def get_tables():
+    db = _get_db()
     tables_ref = db.collection('tables')
     docs = tables_ref.stream()
     tables = []
@@ -25,19 +25,23 @@ def get_tables():
     return tables
 
 def create_table(data):
+    db = _get_db()
     tables_ref = db.collection('tables')
     doc_ref = tables_ref.add(data)
     return {'id': doc_ref[1].id, **data}
 
 def update_table(table_id, data):
+    db = _get_db()
     table_ref = db.collection('tables').document(table_id)
     table_ref.update(data)
     return {'id': table_id, **data}
 
 def delete_table(table_id):
+    db = _get_db()
     db.collection('tables').document(table_id).delete()
 
 def generate_qr(table_id):
+    db = _get_db()
     table_ref = db.collection('tables').document(table_id)
     table_doc = table_ref.get()
     if not table_doc.exists:
@@ -53,7 +57,6 @@ def generate_qr(table_id):
     img = qr.make_image(fill_color="black", back_color="white")
     
     if IS_VERCEL:
-        # On Vercel: return base64 data URL (no filesystem write)
         buffer = io.BytesIO()
         img.save(buffer, format='PNG')
         buffer.seek(0)
@@ -62,7 +65,6 @@ def generate_qr(table_id):
         table_ref.update({'qr_code_url': qr_url})
         return qr_url
     else:
-        # Local: save to filesystem
         filename = f"table_{table_number}.png"
         qr_path = os.path.join(QR_DIR, filename)
         img.save(qr_path)

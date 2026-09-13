@@ -1,7 +1,7 @@
 from functools import wraps
 from flask import request, jsonify
 from flask_jwt_extended import get_jwt_identity, verify_jwt_in_request
-from ..services.auth_service import db
+from ..services.auth_service import _get_db
 
 def role_required(roles):
     def decorator(f):
@@ -11,6 +11,7 @@ def role_required(roles):
             current_user = get_jwt_identity()
             email = current_user.get('email')
             
+            db = _get_db()
             users_ref = db.collection('users')
             query = users_ref.where('email', '==', email).limit(1)
             docs = query.stream()

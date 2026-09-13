@@ -1,8 +1,9 @@
-from ..services.auth_service import db
+from ..services.auth_service import _get_db
 from firebase_admin import firestore
 from datetime import datetime
 
 def create_order(data):
+    db = _get_db()
     now = datetime.utcnow().isoformat()
     items = data.get('items', [])
     if not items:
@@ -42,6 +43,7 @@ def create_order(data):
     return create_in_transaction(transaction)
 
 def get_order(order_id):
+    db = _get_db()
     order_ref = db.collection('orders').document(order_id)
     order_doc = order_ref.get()
     if order_doc.exists:
@@ -51,6 +53,7 @@ def get_order(order_id):
     return None
 
 def get_orders():
+    db = _get_db()
     orders_ref = db.collection('orders')
     docs = orders_ref.stream()
     orders = []
@@ -61,6 +64,7 @@ def get_orders():
     return orders
 
 def update_order_status(order_id, status):
+    db = _get_db()
     order_ref = db.collection('orders').document(order_id)
     order_doc = order_ref.get()
     if not order_doc.exists:

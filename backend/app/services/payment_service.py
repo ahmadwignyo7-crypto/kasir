@@ -1,8 +1,9 @@
-from ..services.auth_service import db
+from ..services.auth_service import _get_db
 from firebase_admin import firestore
 from datetime import datetime
 
 def process_payment(data):
+    db = _get_db()
     order_id = data.get('order_id')
     method = data.get('method')
     amount_paid = data.get('amount_paid')
@@ -45,6 +46,7 @@ def process_payment(data):
     return {'id': payment_ref[1].id, **payment_data}
 
 def get_payment(payment_id):
+    db = _get_db()
     payment_ref = db.collection('payments').document(payment_id)
     payment_doc = payment_ref.get()
     if payment_doc.exists:
