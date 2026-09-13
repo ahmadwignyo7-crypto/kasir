@@ -1,4 +1,5 @@
 import os
+import hashlib
 import logging
 from flask import Flask, send_from_directory, send_file, jsonify
 from flask_cors import CORS
@@ -8,9 +9,25 @@ from .extensions import bcrypt, jwt
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def _make_safe_hmac_key(raw_key):
+    if not raw_key:
+        return 'kago-jwt-secret-key-long-enough-for-sha256!'
+    if '-----BEGIN' in raw_key or len(raw_key) > 128:
+        return hashlib.sha256(raw_key.encode('utf-8')).hexdigest()
+    try:
+        if raw_key.encode('utf-8')[:1] == b'\x30':
+            return hashlib.sha256(raw_key.encode('utf-8')).hexdigest()
+    except Exception:
+        pass
+    return raw_key
+
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+
+    raw_jwt_key = os.getenv('JWT_SECRET_KEY', app.config.get('JWT_SECRET_KEY', ''))
+    app.config['JWT_SECRET_KEY'] = _make_safe_hmac_key(raw_jwt_key)
+    logger.info('JWT key length: %d', len(app.config['JWT_SECRET_KEY']))
     
     # Initialize extensions
     bcrypt.init_app(app)
