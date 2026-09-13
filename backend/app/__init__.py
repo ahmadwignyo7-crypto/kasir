@@ -1,8 +1,12 @@
 import os
+import logging
 from flask import Flask, send_from_directory, send_file, jsonify
 from flask_cors import CORS
 from .config import Config
 from .extensions import bcrypt, jwt
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def create_app():
     app = Flask(__name__)
@@ -23,6 +27,9 @@ def create_app():
         frontend_dir = os.path.abspath(os.path.join(backend_dir, 'frontend'))
     if not os.path.isdir(frontend_dir):
         frontend_dir = os.path.join(os.path.dirname(backend_dir), 'frontend')
+    
+    logger.info('Backend dir: %s', backend_dir)
+    logger.info('Frontend dir: %s (exists: %s)', frontend_dir, os.path.isdir(frontend_dir))
     
     def serve_frontend(directory, filename):
         filepath = os.path.join(directory, filename)
@@ -89,7 +96,15 @@ def create_app():
             'status': 'ok',
             'firebase_configured': firebase_configured,
             'firebase_credentials_type': creds_type,
+            'frontend_dir': frontend_dir,
+            'frontend_exists': os.path.isdir(frontend_dir),
         })
+
+    # Global error handler
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        logger.error('Unhandled exception: %s', e)
+        return jsonify({'error': 'Terjadi kesalahan server', 'detail': str(e)}), 500
 
     # Register blueprints
     from .routes.auth_routes import auth_bp

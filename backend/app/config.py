@@ -1,6 +1,9 @@
 import os
 import json
 import base64
+import logging
+
+logger = logging.getLogger(__name__)
 
 try:
     from dotenv import load_dotenv
@@ -23,6 +26,7 @@ class Config:
         try:
             decoded = base64.b64decode(_firebase_creds).decode('utf-8')
             FIREBASE_CREDENTIALS = json.loads(decoded)
+            logger.info('Firebase credentials loaded from base64 env var')
         except Exception:
             pass
         
@@ -30,16 +34,23 @@ class Config:
         if FIREBASE_CREDENTIALS is None:
             try:
                 FIREBASE_CREDENTIALS = json.loads(_firebase_creds)
-            except (json.JSONDecodeError, TypeError):
-                pass
+                logger.info('Firebase credentials loaded from JSON env var')
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning('Failed to parse FIREBASE_CREDENTIALS as JSON: %s', e)
         
         # Try file path
         if FIREBASE_CREDENTIALS is None:
             _cred_path = os.path.join(backend_dir, _firebase_creds) if not os.path.isabs(_firebase_creds) else _firebase_creds
             if os.path.exists(_cred_path):
                 FIREBASE_CREDENTIALS = _cred_path
+                logger.info('Firebase credentials loaded from file: %s', _cred_path)
+            else:
+                logger.warning('FIREBASE_CREDENTIALS file not found: %s', _cred_path)
     
     if FIREBASE_CREDENTIALS is None:
         _default_path = os.path.join(backend_dir, 'serviceAccountKey.json')
         if os.path.exists(_default_path):
             FIREBASE_CREDENTIALS = _default_path
+            logger.info('Firebase credentials loaded from default file: %s', _default_path)
+        else:
+            logger.error('FIREBASE_CREDENTIALS not set and no serviceAccountKey.json found!')
