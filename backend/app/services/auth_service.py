@@ -10,12 +10,17 @@ def _get_db():
     global _db
     if _db is None:
         if not firebase_admin._apps:
+            if Config.FIREBASE_CREDENTIALS is None:
+                raise RuntimeError('Firebase credentials not configured. Set FIREBASE_CREDENTIALS env var to the JSON content of serviceAccountKey.json')
             cred = credentials.Certificate(Config.FIREBASE_CREDENTIALS)
             firebase_admin.initialize_app(cred)
         _db = firestore.client()
     return _db
 
 def login_user(email, password):
+    if not email or not password:
+        return {'success': False, 'error': 'Email dan password harus diisi'}
+    
     db = _get_db()
     users_ref = db.collection('users')
     query = users_ref.where(filter=firestore.FieldFilter('email', '==', email)).limit(1)
@@ -27,4 +32,4 @@ def login_user(email, password):
             token = create_access_token(identity={'email': email, 'role': user_data['role']})
             return {'success': True, 'token': token, 'role': user_data['role']}
     
-    return {'success': False, 'error': 'Invalid email or password'}
+    return {'success': False, 'error': 'Email atau password salah'}

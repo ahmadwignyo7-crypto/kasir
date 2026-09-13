@@ -11,8 +11,9 @@ def create_new_order():
     items = data.get('items', [])
     if not items or len(items) == 0:
         return jsonify({'error': 'Pesanan harus memiliki minimal 1 item'}), 400
-    if not data.get('table_id'):
-        return jsonify({'error': 'Nomor meja harus diisi'}), 400
+    order_type = data.get('order_type', 'qr')
+    if order_type != 'takeaway' and not data.get('table_id'):
+        return jsonify({'error': 'Nomor meja harus diisi untuk pesanan dine-in/QR'}), 400
     try:
         order = create_order(data)
         return jsonify(order), 201

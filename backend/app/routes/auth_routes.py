@@ -11,8 +11,16 @@ def login():
     email = data.get('email')
     password = data.get('password')
     
-    result = login_user(email, password)
-    if result['success']:
-        return jsonify({'token': result['token'], 'role': result['role']})
-    else:
-        return jsonify({'error': result['error']}), 401
+    if not email or not password:
+        return jsonify({'error': 'Email dan password harus diisi'}), 400
+    
+    try:
+        result = login_user(email, password)
+        if result['success']:
+            return jsonify({'token': result['token'], 'role': result['role']})
+        else:
+            return jsonify({'error': result['error']}), 401
+    except RuntimeError as e:
+        return jsonify({'error': 'Server tidak terkonfigurasi: ' + str(e)}), 500
+    except Exception as e:
+        return jsonify({'error': 'Terjadi kesalahan server'}), 500

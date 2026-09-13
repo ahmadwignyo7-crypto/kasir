@@ -66,12 +66,18 @@ function getTableFromURL() {
 }
 
 function getMejaParam() {
-    const meja = getTableFromURL();
-    return meja ? '?meja=' + encodeURIComponent(meja) : '';
+    const urlParams = new URLSearchParams(window.location.search);
+    const meja = urlParams.get('meja') || '';
+    const orderType = urlParams.get('order_type') || '';
+    const params = [];
+    if (meja) params.push('meja=' + encodeURIComponent(meja));
+    if (orderType) params.push('order_type=' + encodeURIComponent(orderType));
+    return params.length > 0 ? '?' + params.join('&') : '';
 }
 
 function viewCart() {
-    window.location.href = 'cart.html' + getMejaParam();
+    const params = getMejaParam();
+    window.location.href = 'cart.html' + params;
 }
 
 function displayCart() {
@@ -136,6 +142,20 @@ function checkout() {
     const urlParams = new URLSearchParams(window.location.search);
     const orderType = urlParams.get('order_type') || (tableId ? 'qr' : 'kasir');
 
+    if (orderType === 'dine_in' && !tableId) {
+        var meja = prompt('Masukkan nomor meja (1-10):');
+        if (!meja || isNaN(meja) || parseInt(meja) < 1 || parseInt(meja) > 10) {
+            alert('Nomor meja harus antara 1 - 10');
+            return;
+        }
+        doCheckout(String(meja), orderType);
+        return;
+    }
+
+    doCheckout(tableId, orderType);
+}
+
+function doCheckout(tableId, orderType) {
     const orderData = {
         table_id: tableId || '',
         order_type: orderType,

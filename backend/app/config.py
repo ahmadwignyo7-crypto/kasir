@@ -16,12 +16,16 @@ class Config:
     
     _firebase_creds = os.getenv('FIREBASE_CREDENTIALS')
     
-    if _firebase_creds and _firebase_creds.endswith('.json'):
-        FIREBASE_CREDENTIALS = os.path.join(backend_dir, _firebase_creds)
-    elif _firebase_creds:
+    if _firebase_creds:
         try:
             FIREBASE_CREDENTIALS = json.loads(_firebase_creds)
-        except json.JSONDecodeError:
-            FIREBASE_CREDENTIALS = os.path.join(backend_dir, 'serviceAccountKey.json')
+        except (json.JSONDecodeError, TypeError):
+            _cred_path = os.path.join(backend_dir, _firebase_creds) if not os.path.isabs(_firebase_creds) else _firebase_creds
+            if os.path.exists(_cred_path):
+                FIREBASE_CREDENTIALS = _cred_path
+            else:
+                _default_path = os.path.join(backend_dir, 'serviceAccountKey.json')
+                FIREBASE_CREDENTIALS = _default_path if os.path.exists(_default_path) else None
     else:
-        FIREBASE_CREDENTIALS = os.path.join(backend_dir, 'serviceAccountKey.json')
+        _default_path = os.path.join(backend_dir, 'serviceAccountKey.json')
+        FIREBASE_CREDENTIALS = _default_path if os.path.exists(_default_path) else None

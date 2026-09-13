@@ -8,8 +8,9 @@ def create_order(data):
     items = data.get('items', [])
     if not items:
         raise ValueError('Pesanan harus memiliki minimal 1 item')
-    if not data.get('table_id'):
-        raise ValueError('Nomor meja harus diisi')
+    order_type = data.get('order_type', 'qr')
+    if order_type != 'takeaway' and not data.get('table_id'):
+        raise ValueError('Nomor meja harus diisi untuk pesanan dine-in/QR')
 
     @firestore.transactional
     def create_in_transaction(transaction):

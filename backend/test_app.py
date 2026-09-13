@@ -86,7 +86,7 @@ class TestAuth(KagoTestCase):
         resp = self.client.post('/api/auth/login',
                                 data=json.dumps({}),
                                 content_type='application/json')
-        self.assertEqual(resp.status_code, 401)
+        self.assertEqual(resp.status_code, 400)
 
 
 # ============================================================
@@ -262,7 +262,7 @@ class TestOrderFlow(KagoTestCase):
 
     def test_create_order(self):
         order_data = {
-            'table_id': '',
+            'table_id': '1',
             'order_type': 'dine_in',
             'total': 50000,
             'items': [
@@ -308,7 +308,7 @@ class TestOrderFlow(KagoTestCase):
     def test_update_order_status(self):
         # Create order
         order_data = {
-            'table_id': '',
+            'table_id': '1',
             'order_type': 'dine_in',
             'total': 20000,
             'items': [{'menu_id': 'm1', 'name': 'Kopi', 'price': 20000, 'qty': 1}]
@@ -326,10 +326,10 @@ class TestOrderFlow(KagoTestCase):
 
     def test_update_order_invalid_status(self):
         order_data = {
-            'table_id': '',
+            'table_id': '1',
             'order_type': 'dine_in',
             'total': 15000,
-            'items': []
+            'items': [{'menu_id': 'm1', 'name': 'Kopi', 'price': 15000, 'qty': 1}]
         }
         resp = self.client.post('/api/order/',
                                 data=json.dumps(order_data),
@@ -344,7 +344,7 @@ class TestOrderFlow(KagoTestCase):
     def test_order_status_flow(self):
         """Test full status flow: pending → processing → completed → paid"""
         order_data = {
-            'table_id': '',
+            'table_id': '1',
             'order_type': 'dine_in',
             'total': 40000,
             'items': [{'menu_id': 'm1', 'name': 'Mie Ayam', 'price': 40000, 'qty': 1}]
@@ -368,7 +368,7 @@ class TestPayment(KagoTestCase):
 
     def _create_order(self, total=50000):
         order_data = {
-            'table_id': '',
+            'table_id': '1',
             'order_type': 'dine_in',
             'total': total,
             'items': [{'menu_id': 'm1', 'name': 'Nasi Goreng', 'price': total, 'qty': 1}]
@@ -482,7 +482,7 @@ class TestConcurrency(KagoTestCase):
         def create_order(idx):
             try:
                 order_data = {
-                    'table_id': '',
+                    'table_id': str(idx + 1),
                     'order_type': 'dine_in',
                     'total': 10000 * (idx + 1),
                     'items': [{'menu_id': f'm{idx}', 'name': f'Item {idx}', 'price': 10000 * (idx + 1), 'qty': 1}]

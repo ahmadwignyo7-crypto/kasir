@@ -1,5 +1,5 @@
 import os
-from flask import Flask, send_from_directory, send_file
+from flask import Flask, send_from_directory, send_file, jsonify
 from flask_cors import CORS
 from .config import Config
 from .extensions import bcrypt, jwt
@@ -13,11 +13,23 @@ def create_app():
     jwt.init_app(app)
     CORS(app)
     
-    # Path to frontend folder
-    # Works for both local and Vercel (directory structure is preserved)
-    backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    frontend_dir = os.path.abspath(os.path.join(backend_dir, '..', 'frontend'))
+    # Path resolution for both local dev and Vercel
+    this_dir = os.path.dirname(os.path.abspath(__file__))
+    backend_dir = os.path.dirname(this_dir)
     
+    # Try multiple possible frontend locations
+    frontend_dir = os.path.abspath(os.path.join(backend_dir, '..', 'frontend'))
+    if not os.path.isdir(frontend_dir):
+        frontend_dir = os.path.abspath(os.path.join(backend_dir, 'frontend'))
+    if not os.path.isdir(frontend_dir):
+        frontend_dir = os.path.join(os.path.dirname(backend_dir), 'frontend')
+    
+    def serve_frontend(directory, filename):
+        filepath = os.path.join(directory, filename)
+        if os.path.isfile(filepath):
+            return send_from_directory(directory, filename)
+        return jsonify({'error': f'File not found: {filename}'}), 404
+
     # Serve frontend pages
     @app.route('/')
     def index():
@@ -55,10 +67,14 @@ def create_app():
     def js(filename):
         return send_from_directory(os.path.join(frontend_dir, 'js'), filename)
 
+    @app.route('/img/<path:filename>')
+    def img(filename):
+        return send_from_directory(os.path.join(frontend_dir, 'img'), filename)
+
     # Serve QR code images
     @app.route('/static/qr/<path:filename>')
     def qr_image(filename):
-        qr_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'qr')
+        qr_dir = os.path.join(backend_dir, 'static', 'qr')
         qr_dir = os.path.abspath(qr_dir)
         return send_from_directory(qr_dir, filename)
 
